@@ -1,0 +1,48 @@
+Messages:
+  help: "&a&lHospital | &fCommands: /hospital heal PlayerNick, /hospital accept/decline, /hospital set, /hospital myself, /hospital call <Reason>, /hospital acceptCall <Nick>"
+  noPerm: "&a&lHospital | &cYou haven't permission"
+  nullTarget: "&a&lHospital | &cTarget player is not online or null"
+  MedicSendRequest: "&a&lHospital | &cYou have submitted a request to the player: %target%"
+  YouHaveRequest: "&a&lHospital | &cYou have a request of healing from the player: %medic%"
+  ConfigReloaded: "&a&lHospital | &aConfig Reloaded"
+  TargetHealthy: "&a&lHospital | &fPlayer is healthy"
+  EnoughMoney: "&a&lHospital | &fYou haven't enough money"
+  AcceptMedic: "&a&lHospital | &fPlayer: %player% accept accept your request of healing and you received: %amount%$"
+  Accept: "&a&lHospital | &fYou accept request off healing and you pay to medic: %amount%$"
+  DeclineMedic: "&a&lHospital | &fPlayer: %player% decline your request"
+  Decline: "&a&lHospital | &fYou decline request off healing from the player: %medic%"
+  HaventRequest: "&a&lHospital | &cYou haven't request of healing"
+  UseYourNick: "&a&lHospital | &cYou can't use your nick for submit a request of healing :>"
+  ManyArgs: "&a&lHospital | &cYou use many args!"
+  SmallArgs: "&a&lHospital | &cYou use few args!"
+  YouHealMyself: "&a&lHospital | &fYou cured! You spent %amount%$"
+  MyselfDisabled: "&a&lHospital | &cHealing myself disabled :>"
+  YouHealthy: "&a&lHospital | &fYou healthy :>"
+  SetHospital: "&a&lHospital | &fYou set hospital location."
+  PlayerCall: "&a&lHospital | &fYou called an ambulance! Reason: %Reason%"
+  ToMedicsCall: "&a&lHospital | &fPlayer %nick% called an ambulance for a reason: %Reason%. /hospital callAccept %nick% to help him"
+  CallAcceptToPlayer: "&a&lHospital | &fMedic: %nick% accepted your call."
+  CallAcceptToMedic: "&a&lHospital | &fYou accepted call."
+  NoRequest: "&a&lHospital | &fPlayer didn't call an ambulance."
+  AlreadylCall: "&a&lHospital | &fYou've already called an ambulance."
+  FullAcceptedCalls: "&a&lHospital | &fYou already have accepted call."
+  MedicArrived: "&a&lHospital | &fYou have arrived on a call."
+  ReceivedCompass: "&a&lHospital | &aYou have received a compass"
+  Radio: "&a&lHospitalRadio | &f%player%: %message%."
+  RadioDisabled: "&a&lHospitalRadio | &cRadio disabled!"
+Settings:
+  cost: 250.00
+  myselfCost: 500.00
+  PlayerHealMyself: true #true/false
+  RespawnInHospital: true
+  HealthBoostSeconds: 3 #every 3 seconds +0.5 HP after respawn to full hp
+  UpdateNotify: true
+  RadioEnabled: true
+  RequestDuration: 20
+Hospital:
+  BlockX: 0
+  BlockY: 0
+  BlockZ: 0
+  Yaw: 0
+  Pitch: 0
+  World: world

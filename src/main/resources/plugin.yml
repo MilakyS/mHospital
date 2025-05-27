@@ -1,0 +1,22 @@
+name: mHospital
+version: 2.5
+main: me.milaky.hospital.Hospital
+api-version: 1.16
+depend: [ Vault ]
+authors: [ Milaky ]
+description: Hospital mechanic for roleplay servers.
+commands:
+  Hospital:
+    usage: /<command>
+    description: Main command
+website: https://www.spigotmc.org/resources/mhospital.109651/
+permissions:
+  Hospital.Doctor:
+    default: op
+  Hospital.Reload:
+    default: op
+  Hospital.Myself:
+    default: op
+  Hospital.Set:
+    default: op
+
