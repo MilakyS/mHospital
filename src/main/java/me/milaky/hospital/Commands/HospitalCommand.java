@@ -19,10 +19,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class HospitalCommand implements CommandExecutor {
-    HashMap<Player, Player> hospitalList = new HashMap<Player, Player>();
+    public HashMap<Player, Player> hospitalList = new HashMap<Player, Player>();
 
-    HashSet<Player> hospitalCall = new HashSet<Player>();
-    HashMap<Player, Location> locationMap = new HashMap<>();
+    public HashSet<Player> hospitalCall = new HashSet<Player>();
+    public HashMap<Player, Location> locationMap = new HashMap<>();
     BukkitTask commandTask = null;
     public Hospital plugin;
 
@@ -177,17 +177,18 @@ public class HospitalCommand implements CommandExecutor {
                                             Server server = Bukkit.getServer();
                                             int period = 1;
                                             AtomicInteger cooldown = new AtomicInteger(this.plugin.getConfig().getInt("Settings.RequestDuration"));
-                                            commandTask = server.getScheduler().runTaskTimerAsynchronously(this.plugin, () -> {
+                                            BukkitTask[] taskRef = new BukkitTask[1];
+                                            taskRef[0] = server.getScheduler().runTaskTimerAsynchronously(this.plugin, () -> {
                                                     int duration;
                                                     if(hospitalList.containsKey(target)) {
                                                         duration = cooldown.addAndGet(-1);
                                                         if (duration <= 0) {
                                                             hospitalList.remove(target);
-                                                            commandTask.cancel();
+                                                            if (taskRef[0] != null) taskRef[0].cancel();
                                                         }
                                                     }
                                                     else{
-                                                        commandTask.cancel();
+                                                        if (taskRef[0] != null) taskRef[0].cancel();
                                                     }
                                             }, 1, period * 20L);
                                         }
