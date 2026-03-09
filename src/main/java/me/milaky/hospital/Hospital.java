@@ -45,7 +45,8 @@ public final class Hospital extends JavaPlugin implements Listener {
     public HashSet<Player> medicsOnCall = new HashSet<>();
     public Map<UUID, ItemStack> compasses = new HashMap<>();
 
-
+    public Map<UUID, BukkitTask> healingTasks = new HashMap<>();
+    public Map<UUID, BukkitTask> knockdownTasks = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -59,6 +60,8 @@ public final class Hospital extends JavaPlugin implements Listener {
         getServer().getPluginCommand("hospital").setExecutor(new HospitalCommand(this));
         getServer().getPluginCommand("hospital").setTabCompleter(new TabCompliter());
         getServer().getPluginManager().registerEvents(this, this);
+        getServer().getPluginManager().registerEvents(new me.milaky.hospital.Listeners.KnockdownListener(this), this);
+        getServer().getPluginManager().registerEvents(new me.milaky.hospital.Listeners.MedicInteractListener(this), this);
 
         saveDefaultConfig();
         loadLatestVersion();
@@ -80,8 +83,26 @@ public final class Hospital extends JavaPlugin implements Listener {
                 if (compassTarget != null && playerLocation.distance(compassTarget) < 2) {
                     DeleteItem(p, compass);
                     compasses.remove(p.getUniqueId());
-                    p.sendMessage(this.getConfig().getString("Messages.MedicArrived"));
+                    p.sendMessage(this.getConfig().getString("Messages.MedicArrived", "§fYou have arrived on a call.").replace("&", "§"));
                     medicsOnCall.remove(p);
+                }
+            }
+        }
+
+        // If medic brings player to hospital
+        if (p.hasPermission("Hospital.Doctor") && !p.getPassengers().isEmpty()) {
+            Location loc = p.getLocation();
+            Location hospitalLoc = getHospitalLocation();
+            if (loc.getWorld() != null && loc.getWorld().equals(hospitalLoc.getWorld()) && loc.distance(hospitalLoc) < 5) {
+                for (org.bukkit.entity.Entity passenger : p.getPassengers()) {
+                    if (passenger instanceof Player) {
+                        Player knocked = (Player) passenger;
+                        if (isKnockedDown(knocked)) {
+                            p.removePassenger(knocked);
+                            sendToHospital(knocked);
+                            removeKnockdown(knocked);
+                        }
+                    }
                 }
             }
         }
@@ -115,13 +136,89 @@ public final class Hospital extends JavaPlugin implements Listener {
     }
 
 
-    /// Hospital location check
-    Float x = (float) this.getConfig().getDouble("Hospital.BlockX");
-    Float y = (float) this.getConfig().getDouble("Hospital.BlockY");
-    Float z = (float) this.getConfig().getDouble("Hospital.BlockZ");
-    Float yaw = (float) this.getConfig().getDouble("Hospital.Yaw");
-    Float pitch = (float) this.getConfig().getDouble("Hospital.Pitch");
-    String world = this.getConfig().getString("Hospital.World");
+    public Location getHospitalLocation() {
+        Float x = (float) this.getConfig().getDouble("Hospital.BlockX");
+        Float y = (float) this.getConfig().getDouble("Hospital.BlockY");
+        Float z = (float) this.getConfig().getDouble("Hospital.BlockZ");
+        Float yaw = (float) this.getConfig().getDouble("Hospital.Yaw");
+        Float pitch = (float) this.getConfig().getDouble("Hospital.Pitch");
+        String world = this.getConfig().getString("Hospital.World");
+        return new Location(this.getServer().getWorld(world), (double) x, (double) y, (double) z, yaw, pitch);
+    }
+
+    public boolean isKnockedDown(Player player) {
+        return knockdownTasks.containsKey(player.getUniqueId());
+    }
+
+    public void knockdownPlayer(Player player) {
+        if (isKnockedDown(player)) return;
+        player.sendMessage(this.getConfig().getString("Messages.KnockedDown", "§cYou are knocked down! Wait for a medic or you will be sent to the hospital."));
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.BLINDNESS, 20 * 120, 1, false, false));
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.SLOW, 20 * 120, 255, false, false));
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.JUMP, 20 * 120, 128, false, false));
+
+        // Sleep pose trick
+        // Poses are read-only on many older versions, so we skip setting it directly
+
+        // Schedule auto-teleport
+        int delaySeconds = this.getConfig().getInt("Settings.KnockdownTime", 120);
+        BukkitTask task = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (player.isOnline()) {
+                    sendToHospital(player);
+                }
+                removeKnockdown(player);
+            }
+        }.runTaskLater(this, delaySeconds * 20L);
+        knockdownTasks.put(player.getUniqueId(), task);
+
+        // Notify medics
+        Bukkit.broadcast(this.getConfig().getString("Messages.PlayerKnockedDown", "§cPlayer %player% is knocked down!").replace("%player%", player.getName()), "Hospital.Doctor");
+    }
+
+    public void removeKnockdown(Player player) {
+        BukkitTask task = knockdownTasks.remove(player.getUniqueId());
+        if (task != null) {
+            task.cancel();
+        }
+        if (player.isOnline()) {
+            player.removePotionEffect(org.bukkit.potion.PotionEffectType.BLINDNESS);
+            player.removePotionEffect(org.bukkit.potion.PotionEffectType.SLOW);
+            player.removePotionEffect(org.bukkit.potion.PotionEffectType.JUMP);
+            // if player is passenger, eject them
+            if (player.getVehicle() != null) {
+                player.getVehicle().removePassenger(player);
+            }
+        }
+    }
+
+    public void sendToHospital(Player p) {
+        p.teleport(getHospitalLocation());
+        p.setHealth(1.0);
+        startHealing(p);
+    }
+
+    public void startHealing(Player p) {
+        if (healingTasks.containsKey(p.getUniqueId())) {
+            return;
+        }
+
+        int period = this.getConfig().getInt("Settings.HealthBoostSeconds", 3);
+        BukkitTask task = Bukkit.getServer().getScheduler().runTaskTimer(this, () -> {
+            if (!p.isOnline() || p.getHealth() >= 20.0) {
+                BukkitTask t = healingTasks.remove(p.getUniqueId());
+                if (t != null) {
+                    t.cancel();
+                }
+            } else {
+                double newHealth = p.getHealth() + 1.0;
+                p.setHealth(Math.min(newHealth, 20.0));
+            }
+        }, 20L, period * 20L);
+
+        healingTasks.put(p.getUniqueId(), task);
+    }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onRespawn(PlayerRespawnEvent event) {
@@ -136,18 +233,9 @@ public final class Hospital extends JavaPlugin implements Listener {
             }.runTaskLater(this, 10L);
             int seconds = 2;
             int period = this.getConfig().getInt("Settings.HealthBoostSeconds");
-            this.task = server.getScheduler().runTaskTimer(this, () -> {
-                if (p.getHealth() >= 20.0) {
-                    if (this.task != null) {
-                        this.task.cancel();
-                    }
-                } else {
-                    p.setHealth(p.getHealth() + 1.0);
-                }
-
-            }, (long)seconds * 20L, (long)period * 20L);
-            Location respawn = new Location(this.getServer().getWorld(this.world), (double)this.x, (double)this.y, (double)this.z, this.yaw, this.pitch);
+            Location respawn = getHospitalLocation();
             event.setRespawnLocation(respawn);
+            startHealing(p);
         }
 
     }
@@ -191,6 +279,14 @@ public final class Hospital extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         // Plugin shutdown logic
+        for (BukkitTask task : healingTasks.values()) {
+            task.cancel();
+        }
+        healingTasks.clear();
+        for (BukkitTask task : knockdownTasks.values()) {
+            task.cancel();
+        }
+        knockdownTasks.clear();
     }
     public static Hospital getInstance(){
         return instance;
